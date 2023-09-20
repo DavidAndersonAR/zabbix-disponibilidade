@@ -59,10 +59,6 @@ def dispo_host():
                         dispo = (contador / (quantidade_history)) * 100
                         primeiros_digitos = '{:.2f}'.format(dispo).replace('.', ',')
                      
-
-
-
-
                     hosts_zabbix.append({
                             
                             'availability_formatada' : primeiros_digitos,
@@ -73,4 +69,37 @@ def dispo_host():
                         })
 
                 print(f"{testenome}, {id_testenome} - {primeiros_digitos} ")
+
+
+dispo_host()
+
+
+# Conexão com o banco de dados
+conexao = pymysql.connect(host=host, user=user, password=password, database=database)
+cursor = conexao.cursor()
+
+# Comando SQL para verificar se a linha já existe
+comando_sql_verificacao = "SELECT COUNT(*) FROM disponibilidade_hosts WHERE id = %s AND host = %s AND data_coleta = %s;"
+comando_sql_insercao = "INSERT INTO disponibilidade_hosts (id, host, data_coleta, disponibilidade) VALUES (%s, %s, %s, %s);"
+
+count = 0
+for teste in hosts_zabbix:
+    count = count + 1
+    ID = teste['ID']
+    teste_dispo = teste['Disponibilidade']
+    host = teste['host']
+    data_coleta = (datetime.now() - timedelta(days=data_selecionada)).strftime('%Y-%m-%d')
+
+    # Executa a consulta para verificar se a linha já existe
+    cursor.execute(comando_sql_verificacao, (ID, host, data_coleta))
+    resultado = cursor.fetchone()
+
+    # Se a consulta retornar 0, a linha não existe, então podemos inseri-la
+    if resultado[0] == 0:
+        cursor.execute(comando_sql_insercao, (ID, host, data_coleta, teste_dispo, ))
+        print(f"{count}, {host} inserido.")
+
+# Efetua o commit das alterações e fecha a conexão
+conexao.commit()
+conexao.close()
 
